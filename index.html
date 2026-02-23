@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대항해 선박 강화 시뮬레이터</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Noto+Serif+KR:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9933a;
+    --gold-light: #e8b84b;
+    --gold-dark: #8a5f1a;
+    --bg: #0c0a06;
+    --panel: #181208;
+    --panel2: #201808;
+    --border: #3a2c0e;
+    --border2: #4e3a14;
+    --text: #d4b483;
+    --text-dim: #7a6040;
+    --red: #c0392b;
+    --green: #27ae60;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif KR', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 60px;
+    background-image:
+      radial-gradient(ellipse at 30% 60%, rgba(139,85,20,0.07) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg width='80' height='80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 40 Q20 10 40 40 Q60 70 80 40' fill='none' stroke='%233a2c0e' stroke-width='0.4' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .page-body {
+    width: 100%;
+    max-width: 820px;
+    padding: 0 16px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  /* ── Side Panel ── */
+  .side-panel {
+    width: 210px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px;
+    position: sticky;
+    top: 16px;
+  }
+
+  .side-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .chain-group {
+    margin-bottom: 16px;
+  }
+  .chain-group:last-child { margin-bottom: 0; }
+
+  .chain-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .chain-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    margin-bottom: 4px;
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    background: rgba(0,0,0,0.3);
+    transition: all 0.3s;
+  }
+  .chain-step.done {
+    border-color: var(--gold-dark);
+    background: rgba(201,147,58,0.08);
+  }
+  .chain-step.done .chain-step-name { color: var(--gold); }
+  .chain-step.done .chain-step-prob { color: #5cb870; }
+  .chain-step.active-next {
+    border-color: #2a5a3a;
+    background: rgba(39,174,96,0.07);
+  }
+
+  .chain-step-icon {
+    font-size: 11px;
+    min-width: 14px;
+    text-align: center;
+  }
+  .chain-step-name {
+    font-size: 11px;
+    color: var(--text-dim);
+    flex: 1;
+    line-height: 1.3;
+  }
+  .chain-step-prob {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .chain-step.active-next .chain-step-name { color: var(--text); }
+  .chain-step.active-next .chain-step-prob { color: #5cb870; }
+
+  .chain-arrow {
+    text-align: center;
+    font-size: 9px;
+    color: var(--border2);
+    margin: -2px 0 2px;
+  }
+
+  @media (max-width: 680px) {
+    .page-body { flex-direction: column; }
+    .side-panel { width: 100%; position: static; }
+  }
+
+  header {
+    width: 100%;
+    text-align: center;
+    padding: 28px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(18px, 3.5vw, 26px);
+    color: var(--gold-light);
+    letter-spacing: 5px;
+    text-shadow: 0 0 40px rgba(201,147,58,0.4);
+  }
+  .subtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 3px; margin-top: 5px; }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 18px 20px 20px;
+  }
+
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .progress-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+  }
+  .progress-g {
+    font-family: 'Cinzel', serif;
+    font-size: 30px;
+    color: var(--gold-light);
+    text-shadow: 0 0 20px rgba(232,184,75,0.5);
+    line-height: 1;
+  }
+  .progress-g span { font-size: 14px; color: var(--text-dim); }
+
+  .g-track-outer { position: relative; padding-bottom: 22px; }
+
+  .g-track {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+  }
+
+  .g-step {
+    flex: 1;
+    height: 12px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+  }
+  .g-step.filled {
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+    border-color: var(--gold-dark);
+    box-shadow: 0 0 8px rgba(201,147,58,0.45);
+  }
+  .g-step.milestone-step {
+    border-color: var(--gold-dark);
+    opacity: 0.8;
+  }
+  .g-step.milestone-step.filled {
+    box-shadow: 0 0 14px rgba(201,147,58,0.7);
+    opacity: 1;
+  }
+  .g-label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    white-space: nowrap;
+  }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 1px;
+    border: 1px solid;
+    transition: all 0.18s;
+  }
+  .btn-enhance {
+    background: linear-gradient(135deg, rgba(26,92,42,0.3), rgba(39,174,96,0.15));
+    border-color: #2a7a3a;
+    color: #5cb870;
+  }
+  .btn-enhance:hover:not(:disabled) {
+    background: rgba(39,174,96,0.3);
+    box-shadow: 0 0 12px rgba(92,184,112,0.3);
+  }
+  .btn-enhance:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-carrier {
+    flex: 0.8;
+    background: linear-gradient(135deg, rgba(142,68,173,0.2), rgba(142,68,173,0.1));
+    border-color: #6c3483;
+    color: #bb8fce;
+  }
+  .btn-carrier:hover:not(:disabled) {
+    background: rgba(142,68,173,0.35);
+    box-shadow: 0 0 12px rgba(142,68,173,0.4);
+  }
+  .btn-carrier:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  /* ── Option Card ── */
+  .option-area {
+    min-height: 72px;
+    display: flex;
+  }
+
+  .option-card {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--gold-dark);
+    border-radius: 2px;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: cardIn 0.3s ease;
+    box-shadow: 0 0 30px rgba(201,147,58,0.12), inset 0 0 40px rgba(0,0,0,0.3);
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .opt-milestone-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--gold-dark);
+    border: 1px solid var(--border2);
+    padding: 3px 10px;
+    border-radius: 10px;
+  }
+
+  .opt-name {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    color: var(--gold-light);
+    text-align: center;
+    text-shadow: 0 0 16px rgba(232,184,75,0.5);
+  }
+  .opt-num { font-size: 11px; color: var(--text-dim); }
+  .opt-prob { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; margin-top: 2px; }
+  .opt-prob span { color: var(--gold); font-family: 'Cinzel', serif; font-size: 14px; }
+  .opt-prob em { font-style: normal; color: var(--text-dim); font-size: 10px; margin-left: 4px; }
+
+  .btn-accept {
+    padding: 10px 32px;
+    background: linear-gradient(135deg, rgba(26,92,42,0.4), rgba(39,174,96,0.2));
+    border: 1px solid #2a7a3a;
+    color: #5cb870;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.18s;
+    margin-top: 2px;
+  }
+  .btn-accept:hover { background: rgba(39,174,96,0.35); box-shadow: 0 0 10px rgba(92,184,112,0.3); }
+
+  .idle-msg {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    border: 1px dashed var(--border);
+    border-radius: 2px;
+    padding: 22px;
+    font-style: italic;
+    text-align: center;
+  }
+
+  /* ── Acquired ── */
+  .acquired-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px 20px;
+  }
+  .section-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .acquired-list { display: flex; flex-direction: column; gap: 7px; }
+
+  .acquired-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border2);
+    border-radius: 1px;
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .acq-g { font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold-dark); min-width: 22px; }
+  .acq-name { font-size: 13px; color: var(--text); flex: 1; }
+  .acq-num { font-size: 10px; color: var(--text-dim); }
+
+  .none-yet { font-size: 12px; color: var(--text-dim); text-align: center; padding: 8px 0; font-style: italic; }
+
+  /* ── Stats ── */
+  .stats-wrap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-box { background: var(--panel); border: 1px solid var(--border); border-radius: 2px; padding: 12px; text-align: center; }
+  .stat-box-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; }
+  .stat-box-value { font-family: 'Cinzel', serif; font-size: 24px; color: var(--gold-light); }
+  .stat-box-value.purple { color: #bb8fce; }
+
+  @keyframes flash { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .flashing { animation: flash 0.35s ease 3; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚓ SHIP ENHANCEMENT ⚓</h1>
+  <div class="subtitle">대항해 선박 강화 시뮬레이터</div>
+</header>
+
+<div class="page-body">
+  <div class="side-panel">
+    <div class="side-title">CHAIN PROBABILITY</div>
+
+    <div class="chain-group">
+      <div class="chain-label">가속 강화</div>
+      <div class="chain-step" id="ch_accel1">
+        <div class="chain-step-icon">①</div>
+        <div class="chain-step-name">가속강화1</div>
+        <div class="chain-step-prob" id="prob_accel1">-</div>
+      </div>
+      <div class="chain-arrow">↓</div>
+      <div class="chain-step" id="ch_accel2">
+        <div class="chain-step-icon">②</div>
+        <div class="chain-step-name">가속강화2</div>
+        <div class="chain-step-prob" id="prob_accel2">-</div>
+      </div>
+      <div class="chain-arrow">↓</div>
+      <div class="chain-step" id="ch_accel3">
+        <div class="chain-step-icon">③</div>
+        <div class="chain-step-name">가속강화3</div>
+        <div class="chain-step-prob" id="prob_accel3">-</div>
+      </div>
+    </div>
+
+    <div class="chain-group">
+      <div class="chain-label">스킬칸 추가</div>
+      <div class="chain-step" id="ch_skill1">
+        <div class="chain-step-icon">①</div>
+        <div class="chain-step-name">스킬칸추가1</div>
+        <div class="chain-step-prob" id="prob_skill1">-</div>
+      </div>
+      <div class="chain-arrow">↓</div>
+      <div class="chain-step" id="ch_skill2">
+        <div class="chain-step-icon">②</div>
+        <div class="chain-step-name">스킬칸추가2</div>
+        <div class="chain-step-prob" id="prob_skill2">-</div>
+      </div>
+    </div>
+
+    <div class="chain-group">
+      <div class="chain-label">스킬 계승</div>
+      <div class="chain-step" id="ch_inherit">
+        <div class="chain-step-icon">✦</div>
+        <div class="chain-step-name">스킬 계승</div>
+        <div class="chain-step-prob" id="prob_inherit">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+
+  <div class="progress-wrap">
+    <div class="progress-top">
+      <div class="progress-label">ENHANCEMENT GRADE</div>
+      <div class="progress-g" id="currentG">0<span>G</span></div>
+    </div>
+    <div class="g-track-outer">
+      <div class="g-track" id="gTrack"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-enhance" id="btnEnhance" onclick="enhance()">▶ 강화</button>
+      <button class="btn btn-carrier" id="btnCarrier" onclick="useCarrier()">✦ 함재기</button>
+    </div>
+  </div>
+
+  <div class="option-area" id="optionArea">
+    <div class="idle-msg">강화 버튼을 눌러 시작하세요</div>
+  </div>
+
+  <div class="acquired-wrap">
+    <div class="section-title">획득한 옵션</div>
+    <div class="acquired-list" id="acquiredList">
+      <div class="none-yet">아직 획득한 옵션이 없습니다</div>
+    </div>
+  </div>
+
+  <div class="stats-wrap">
+    <div class="stat-box">
+      <div class="stat-box-label">현재 G</div>
+      <div class="stat-box-value" id="statG">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">획득 옵션</div>
+      <div class="stat-box-value" id="statOpts">0 / 3</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-box-label">함재기 사용</div>
+      <div class="stat-box-value purple" id="statCarrier">0</div>
+    </div>
+  </div>
+
+  </div>
+</div>
+
+<script>
+const OPTIONS = [
+  { num:23, name:'내구력 강화' },
+  { num:22, name:'세로돛 성능 강화' },
+  { num:21, name:'가로돛 성능 강화' },
+  { num:20, name:'조력 강화' },
+  { num:19, name:'내파성 강화' },
+  { num:18, name:'장갑 강화' },
+  { num:17, name:'선실 적재량 강화' },
+  { num:16, name:'포실 적재량 강화' },
+  { num:15, name:'창고 용량 강화' },
+  { num:14, name:'가속 강화1' },
+  { num:13, name:'가속 강화2' },
+  { num:12, name:'가속 강화3' },
+  { num:11, name:'선측포 추가' },
+  { num:10, name:'선수포 추가' },
+  { num:9,  name:'선미포 추가' },
+  { num:8,  name:'스킬칸 추가1' },
+  { num:7,  name:'스킬칸 추가2' },
+  { num:6,  name:'스킬 계승' },
+  { num:5,  name:'포함 개조' },
+  { num:4,  name:'장갑함 개조' },
+  { num:3,  name:'백병함 개조' },
+  { num:2,  name:'탐사선 개조' },
+  { num:1,  name:'선회 성능 강화' },
+];
+
+const MILESTONES = [1, 3, 6];
+const MAX_G = 8;
+
+let g = 0;
+let acquired = [];      // [{milestone, option}]
+let carrierCount = 0;
+
+function getPool() {
+  const used = acquired.map(a => a.option.num);
+
+  return OPTIONS.filter(o => {
+    // 이미 획득한 옵션은 제외 (전체 중복 불가)
+    if (used.includes(o.num)) return false;
+    // 가속강화2(13)는 가속강화1(14) 획득 후에만
+    if (o.num === 13 && !used.includes(14)) return false;
+    // 가속강화3(12)는 가속강화2(13) 획득 후에만
+    if (o.num === 12 && !used.includes(13)) return false;
+    // 스킬칸추가2(7)는 스킬칸추가1(8) 획득 후에만
+    if (o.num === 7 && !used.includes(8)) return false;
+    return true;
+  });
+}
+
+function rollOption() {
+  const pool = getPool();
+  if (!pool.length) return null;
+  const opt = pool[Math.floor(Math.random() * pool.length)];
+  return { opt, poolSize: pool.length };
+}
+
+function enhance() {
+  if (g >= MAX_G) return;
+  g++;
+  updateGBar();
+
+  if (MILESTONES.includes(g)) {
+    const result = rollOption();
+    if (result) {
+      acquired.push({ milestone: g, option: result.opt });
+      updateAcquired();
+      showCard(result.opt, g, result.poolSize);
+    } else {
+      showIdle('획득 가능한 옵션이 없습니다');
+    }
+  } else {
+    const msg = g >= MAX_G ? '🎉 8G 강화 완료!' : '강화 버튼을 눌러 계속하세요';
+    showIdle(msg);
+  }
+
+  if (g >= MAX_G) document.getElementById('btnEnhance').disabled = true;
+  updateStats();
+  updateChainProbs();
+}
+
+
+
+function useCarrier() {
+  carrierCount++;
+
+  g = 0;
+  acquired = [];
+
+  updateGBar();
+  updateAcquired();
+  updateStats();
+
+  document.getElementById('btnEnhance').disabled = false;
+
+  const btn = document.getElementById('btnCarrier');
+  btn.classList.add('flashing');
+  setTimeout(() => btn.classList.remove('flashing'), 1100);
+
+  showIdle('함재기 사용 — 0G부터 다시 시작합니다');
+  updateChainProbs();
+}
+
+/* ── Render ── */
+function showCard(opt, ms, poolSize) {
+  if (!opt) { showIdle('뽑을 옵션이 없습니다'); return; }
+  const pct = (1 / poolSize * 100).toFixed(1);
+  document.getElementById('optionArea').innerHTML = `
+    <div class="option-card">
+      <div class="opt-milestone-tag">${ms}G OPTION ACQUIRED</div>
+      <div class="opt-name">${opt.name}</div>
+      <div class="opt-num">No. ${opt.num}</div>
+      <div class="opt-prob">등장 확률 <span>${pct}%</span> <em>(${poolSize}개 균등)</em></div>
+    </div>`;
+}
+
+function showIdle(msg) {
+  document.getElementById('optionArea').innerHTML = `<div class="idle-msg">${msg}</div>`;
+}
+
+function updateGBar() {
+  const track = document.getElementById('gTrack');
+  track.innerHTML = '';
+  for (let i = 1; i <= MAX_G; i++) {
+    const d = document.createElement('div');
+    const isMile = MILESTONES.includes(i);
+    d.className = 'g-step' + (i <= g ? ' filled' : '') + (isMile ? ' milestone-step' : '');
+    if (isMile) {
+      const lbl = document.createElement('div');
+      lbl.className = 'g-label';
+      lbl.textContent = i + 'G';
+      d.appendChild(lbl);
+    }
+    track.appendChild(d);
+  }
+  document.getElementById('currentG').innerHTML = g + '<span>G</span>';
+}
+
+function updateAcquired() {
+  const el = document.getElementById('acquiredList');
+  if (!acquired.length) {
+    el.innerHTML = '<div class="none-yet">아직 획득한 옵션이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = acquired.map(a =>
+    `<div class="acquired-item">
+      <div class="acq-g">${a.milestone}G</div>
+      <div class="acq-name">${a.option.name}</div>
+      <div class="acq-num">No.${a.option.num}</div>
+    </div>`
+  ).join('');
+}
+
+function updateStats() {
+  document.getElementById('statG').textContent = g;
+  document.getElementById('statOpts').textContent = acquired.length + ' / 3';
+  document.getElementById('statCarrier').textContent = carrierCount;
+}
+
+function updateChainProbs() {
+  const used = acquired.map(a => a.option.num);
+  const pool = getPool();
+  const poolSize = pool.length;
+
+  // 다음 단계가 풀에 있으면 확률 계산, 없으면(이미 획득 or 조건 미충족) 상태 표시
+  function probStr(num) {
+    if (used.includes(num)) return '획득';
+    if (pool.find(o => o.num === num)) return (1 / poolSize * 100).toFixed(1) + '%';
+    return '대기중';  // 선행 조건 미충족
+  }
+
+  function setState(id, probId, num) {
+    const el = document.getElementById(id);
+    const pr = document.getElementById(probId);
+    const p = probStr(num);
+    pr.textContent = p;
+    el.classList.remove('done', 'active-next');
+    if (used.includes(num)) {
+      el.classList.add('done');
+      pr.textContent = '✓ 획득';
+    } else if (pool.find(o => o.num === num)) {
+      el.classList.add('active-next');
+    }
+  }
+
+  setState('ch_accel1', 'prob_accel1', 14);
+  setState('ch_accel2', 'prob_accel2', 13);
+  setState('ch_accel3', 'prob_accel3', 12);
+  setState('ch_skill1', 'prob_skill1', 8);
+  setState('ch_skill2', 'prob_skill2', 7);
+  setState('ch_inherit', 'prob_inherit', 6);
+}
+
+// Init
+updateGBar();
+updateChainProbs();
+</script>
+</body>
+</html>
