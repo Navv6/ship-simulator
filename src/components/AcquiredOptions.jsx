@@ -18,7 +18,6 @@ export default function AcquiredOptions({ acquired }) {
                 <div key={idx} className="acquired-item">
                   <div className="acq-g">{item.milestone}G</div>
                   <div className="acq-name">{item.option.name}</div>
-                  <div className="acq-num">No.{item.option.num}</div>
                   <div className="acq-prob">{prob}%</div>
                 </div>
               );

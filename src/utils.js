@@ -1,4 +1,4 @@
-import { OPTIONS, SHORT_NAMES } from './constants';
+import { OPTIONS, SHORT_NAMES } from './constants.js';
 
 export const getPool = (acquired, filters) => {
   const used = acquired.map(a => a.option.num);
@@ -12,7 +12,9 @@ export const getPool = (acquired, filters) => {
     if (!filters.bow && o.num === 10) return false;
     if (!filters.side && o.num === 11) return false;
     if (!filters.stern && o.num === 9) return false;
+    if (o.num === 20 && filters.shipType !== 'galley') return false;
     if (!filters.remodel && [5, 4, 3, 2].includes(o.num)) return false;
+    if (o.num === 6 && filters.inherit === false) return false;
 
     return true;
   });
